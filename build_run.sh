@@ -43,4 +43,4 @@ pip install -r $(pwd)/script/requirements.txt
 mkdir -p $(pwd)/plots
 
 python3 $(pwd)/script/plot.py $(pwd)/logs/lab02-part1.json
-# TODO add more plotting commands
+python3 $(pwd)/script/plot.py $(pwd)/logs/lab02-part2.json
