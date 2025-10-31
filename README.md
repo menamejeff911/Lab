@@ -1,18 +1,16 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/hlMxVAew)
-# 🎓 Lab 02: Cache and Tiling
+[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/-qJn85GV)
+# 🎓 Lab 03: Vectorization
 
-The goal of this lab is to learn the memory architecture of
-a multi-core processor and how to use the memory hierarchy to
-speedup an application At the
-end of the lab:
-* you will know memory hierarchy of the processor that you are working.
-* you will be able to use profiler to analyze the performance of your code.
-* you will apply tiling to benefit from the fast memory.
+The goal of this lab is to learn how to use vector processors using AVX
+  intrinsics. At the end of the lab:
+* you will know how to work with AVX intrinsics in C++.
+* you will learn linear solvers and n-body problems.
+* You will analyze the performance of your code using Google Benchmark, Profilers, and
+  plot the results.
+
 
 **Note:** You must review Tutorial 01 before starting this lab.
 ***
-
-
 
 ## 🛠️ Logging in to the ECE Cluster
 The ECE computer server is a local server used for this course. The ECE server
@@ -86,113 +84,162 @@ the job will be saved in a `*.out`file.
 
 ## ✅ Tasks
 
-You will first design an experiment to determine different levels of 
-caches and cache line size. Then, you will implement a numerical solver 
-for the heat equation and apply loop tiling to it to benefit from the 
-cache hierarchy of the processor.
+In this lab, you will work with two different important 
+computations: Cholesky decomposition and N-body simulation.
 
-*Note*: the number of iterations in the google benchmark should not be larger than 3.
-
-### Task 1 : Cache Hierarchy Analysis
-In this task, you will analyze cache hierarchy of the processor's memory
-and implement a copy benchmark to measure the size of different levels of caches. 
-You will need to do time measurement for this part. 
-You will also need to do profiling with proper counters to back up your cache size claims.
-You may need to work with compiler optimization flags to get the best results.
-To ensure the copy function works as expected, you should pick a flag that does not change the 
-code behaviour. 
-
-### Task 2 : Heat Equation Solver
-In this task you will first implement a part of the numerical solver 
-for the heat equation. Then, you will apply loop tiling to the solver 
-to benefit from the cache hierarchy of the processor.
+* Apply any necessary transformation to the Cholesky and n-body problems to make them vectorizable.
+* Then implement the vectorized version of the Cholesky and n-body problems using avx intrinsics.
 
 
-### Overview
+### Task 1 : Cholesky Decomposition
 
-The heat equation is a partial differential equation (PDE) that 
-describes the distribution of heat (or temperature) in a given 
-region over time. It is widely used in physics and engineering
-to model heat conduction. The equation in two dimensions is given as:
+Cholesky decomposition is a numerical method used to solve systems of linear equations,
+particularly when the coefficient matrix is symmetric and positive definite. It decomposes
+a matrix into the product of a lower triangular matrix and its transpose. This method is
+computationally efficient and is widely used in various applications, including optimization,
+machine learning, and simulations.
+
+In this task, you will first implement Cholesky decomposition and test it for correctness.
+Then, you will make a new vectorized implementation using AVX intrinsics to improve its performance.
+
+#### Overview
+Cholesky decomposition is a method for decomposing a symmetric positive-definite matrix
+`A` into the product of a lower triangular matrix `L` and its transpose `L^T`, such that:
 ```angular2html
-∂u/∂t = α(∂²u/∂x² + ∂²u/∂y²)
+A = LL^T
 ```
 Where:
-- `u(x, y, t)` is the temperature at position `(x, y)` and time `t`.
-- `a` is the thermal diffusivity constant.
-- `∂u/∂t` is the rate of change of temperature over time.
-- `∂²u/∂x²` and `∂²u/∂y²` are the second spatial derivatives of temperature.
+- `A` is a symmetric positive-definite matrix.
+- `L` is a lower triangular matrix.
+- `L^T` is the transpose of `L`.
+- The decomposition is unique if `A` is positive definite.
+- Cholesky decomposition is computationally efficient, requiring approximately `n^3/3`
+  operations for an `n x n` matrix, which is about half the cost of other methods like
+  LU decomposition.
+- It is widely used in numerical simulations, optimization problems, and machine learning,
+  particularly in algorithms like Gaussian processes and Kalman filters.
+- Cholesky decomposition is numerically stable and less sensitive to round-off errors
+  compared to other decomposition methods.
+- It is particularly useful for solving large systems of linear equations
+  where the matrix is symmetric and positive definite.
+- The method is not applicable to non-symmetric or non-positive-definite matrices.
+- once `L` is computed, it can be used to efficiently solve systems of equations
+  of the form `Ax = b` by solving two triangular systems: `Ly = b` and `L^Tx = y`.
 
-The equation is solved numerically using finite difference methods, 
-where the spatial domain is discretized into a grid, and the time evolution 
-is computed iteratively.
-
-### Numerical Solver
-
-#### Five-Point Stencil Formula
-
-The numerical solver uses the five-point stencil formula to compute the 
-temperature at each grid point:
+#### Algorithm
+The Cholesky decomposition algorithm iteratively computes the elements of the
+lower triangular matrix `L` using the following formulas:
 ```angular2html
-u(i, j, t+Δt) = u(i, j, t) + αΔt( (u(i+1, j, t) - 2u(i, j, t) + u(i-1, j, t))/Δx² + (u(i, j+1, t) - 2u(i, j, t) + u(i, j-1, t))/Δy² )
+L[j][j] = sqrt(A[j][j] - sum(L[j][k]^2 for k in range(j)))
+L[i][j] = (A[i][j] - sum(L[j][k] * L[i][k] for k in range(j))) / L[j][j] for i > j
 ```
 Where:
-- `u(i, j, t)` is the temperature at grid point `(i, j)` at time `t`.
-- `Δt` is the time step.
-- `Δx` and `Δy` are the spatial step sizes in the x and y directions, respectively.
-- `α` is the thermal diffusivity constant.
-- `u(i+1, j, t)`, `u(i-1, j, t)`, `u(i, j+1, t)`, and `u(i, j-1, t)` are the 
- temperatures at the neighboring grid points. The formula updates the temperature 
- at each grid point based on its current value and the values of its four immediate neighbors.
- This method is efficient and provides a good approximation of the heat distribution over time.
+- `L[j][j]` is the diagonal element of `L`.
+- `L[i][j]` is the off-diagonal element of `L`.
+- `A[i][j]` is the element of the original matrix `A`.
+- `sum` represents the summation over the specified range.
+- The algorithm proceeds row by row, calculating the diagonal elements first,
+  followed by the off-diagonal elements.
+- The process continues until all elements of `L` are computed.
 
-#### What is Stencil computation?
-Stencil computations are a class of numerical data processing solution which update array
-elements according to some fixed pattern, called a stencil.
+### Blocked Cholesky In-place Decomposition (Bonus / Optional)
+Blocked Cholesky decomposition is an optimized version of the standard Cholesky
+decomposition algorithm that improves performance by processing the matrix in 
+blocks or submatrices. This approach takes advantage of modern computer architectures,
+which are designed to efficiently handle data in blocks, leading to better cache utilization
+and reduced memory access times.
+The blocked Cholesky decomposition algorithm divides the matrix `A` into smaller
+submatrices or blocks of size `b x b`. The algorithm then performs the decomposition
+on these blocks, updating the blocks of the lower triangular matrix `L` iteratively. The key steps of the blocked Cholesky decomposition algorithm are as follows:
+1. **Partitioning**: Divide the matrix `A` into blocks of size `b x b`.
+2. **Block Decomposition**: For each block, perform the Cholesky decomposition
+   on the diagonal block.
+3. **Update Off-Diagonal Blocks**: Update the off-diagonal blocks using the results
+   from the diagonal block decomposition.
+4. **Repeat**: Continue the process for all blocks in the matrix until the entire
+   matrix is decomposed.
+The blocked Cholesky decomposition algorithm is particularly effective for large matrices,
+as it reduces the number of memory accesses and improves cache performance.
 
-#### Boundary Conditions
-The solver implements Dirichlet boundary conditions, where the temperature at the
-boundaries of the grid is fixed.
+**Important Note**: The Cholesky here should happen in-place. It means the ouptput matrix 
+L should overwrite the input matrix A. This is important to be compatible with the 
+Basic Linear Algebra Subprograms (BLAS) standard. 
 
-#### Initial Conditions
-The initial temperature distribution is set using a Gaussian function centered in
-the grid, simulating a heat source.
-
-### Code Description
-
-#### Key Components
-
-1. **Data Structures**:
-  - The `field` structure represents the temperature grid, including its dimensions, 
-   grid spacing, and temperature values.
-
-2. **Numerical Solver**:
-  - The `evolve` function updates the temperature grid using the five-point stencil method.
-  - The `evolve_tiled` function applies loop tiling to improve cache performance.
-
-3**Output**:
-- The code writes the temperature field to a PNG file at regular intervals and 
-  computes the average temperature for analysis.
+**Note** You can enable MKL implementation using `-DUSE_MKL=ON` when calling `cmake`.
 
 
-For task 2, you will implement the evolve first and then you will tile the evolve function. 
-You will need to do proper experimentation and profiling to select the tile size(s).
+### Task 2 : N-body Simulation
+N-body simulation is a computational method used to study the dynamics of a system
+of particles under the influence of physical forces, such as gravity or electromagnetism.
+It is widely used in astrophysics, molecular dynamics, and other fields to model
+the interactions and movements of multiple bodies over time.
+In this task, you will first learn a basic N-body simulation (the implementation is provided). 
+Then, you will make a new vectorized implementation using AVX intrinsics to improve its performance.
 
-*Hint* an improvement of around 5% is acceptable. More than 10% is excellent and 
-will be rewarded with bonus points.
+#### Overview
+N-body simulation involves calculating the trajectories of `N` particles
+under the influence of mutual forces. The key components of an N-body simulation include:
+- **Particles**: Each particle has properties such as position, velocity, mass,
+  and charge (if applicable).
+- **Forces**: The forces acting on each particle are computed based on the positions
+  and properties of all other particles. Common forces include gravitational and electrostatic forces.
+- **Time Integration**: The simulation progresses in discrete time steps, updating the positions
+  and velocities of particles based on the computed forces.
+- **Boundary Conditions**: Depending on the simulation, boundary conditions may be applied,
+  such as periodic boundaries or reflective boundaries.
+- **Visualization**: The results of the simulation can be visualized to analyze the behavior
+  of the system over time.
+- N-body simulations can be computationally intensive, especially for large `N`,
+  as the number of interactions scales with `N^2`. Various optimization techniques,
+  such as tree algorithms or fast multipole methods, can be employed to reduce computational complexity.
+- N-body simulations are used in various applications, including:
+  - Astrophysics: Modeling the dynamics of star clusters, galaxies, and planetary systems.
+  - Molecular Dynamics: Studying the interactions of atoms and molecules in materials science and biochemistry.
+  - Plasma Physics: Simulating the behavior of charged particles in a plasma.
+  - Computer Graphics: Generating realistic animations of particle systems.
+  - Game Development: Simulating physical interactions in virtual environments.
+  - Robotics: Planning and simulating the motion of multiple robots in a shared space.
+  - Fluid Dynamics: Modeling the behavior of particles in fluid flows.
+  - and many more.
+
+NOTE: Keep the size of `N` in n-body simulation to be smaller than 1000 to avoid long runtimes.  
+
+#### Algorithm
+The basic algorithm for an N-body simulation involves the following steps:
+1. **Initialization**: Set up the initial conditions for the particles, including their positions,
+   velocities, masses, and other relevant properties.
+2. **Force Calculation**: For each particle, compute the net force acting on it due to all other particles. 
+3. **Time Integration**: Update the positions and velocities of each particle based on the computed forces
+   using numerical integration methods such as Euler's method or Verlet integration.
+4. **Boundary Conditions**: Apply any necessary boundary conditions to the particles,
+   such as reflecting off walls or wrapping around in periodic boundaries.
+5. **Repeat**: Repeat the force calculation and time integration steps for a specified number of time steps
+   or until a certain condition is met (e.g., particles reach a stable configuration).
+6. **Output**: Record the positions and velocities of the particles at each time step for analysis and visualization.
+7. **Optimization**: For large `N`, consider using optimization techniques to reduce computational complexity,
+   such as spatial partitioning (e.g., octrees) or approximating distant interactions.
+8. **Visualization**: Visualize the results of the simulation to analyze the behavior of the system over time.
+9. **Analysis**: Analyze the simulation data to extract meaningful insights about the dynamics of the system.
+
+
 
 ### The expected output
 Your submission must include the following:
-
-* Necessary benchmarks to make an experiment for the cache and cache line size.
-* Use above data to determine the size of different levels of caches. (with plots)
-* Implement the stencil kernel for the heat equation and provide enough tests to verify its correctness.
-We do not grade your tests but it is important to verify your code works as expected.
-* Apply loop tiling to the stencil kernel and show the performance improvement versus the baseline code.
-* Profile the stencil kernel for different sizes of data to find the best tile size and 
- the loops that are selected for tiling (with plots)
-* The necessary Python scripts (and packages) to generate all plots. You won't be allowed to push plots to the repo.
-  We should be able to generate all plots using your scripts and the logs generated from running your
+* Cholesky baseline implementation and at least 3 test cases.
+* Vectorized using AVX instructions and verified Cholesky implementation.
+* Provide profiling analysis to justify the performance of 
+ the vectorized Cholesky implementation for different dimensions (with plots). 
+ Make sure to connect profiling results to your code optimization techniques.
+* The bonus part: Optimizing the Cholesky code to outperform the BLAS library's 
+  implementation of Cholesky decomposition (DPOTRF) for all matrix sizes. 
+  You will need to show profiling analysis to justify your performance claims (with plots).
+* Vectorized using AVX instructions and verified N-body implementation.
+* Provide profiling analysis to justify the performance of 
+ the vectorized N-body implementation (with plots). Make sure to connect 
+ profiling results to your code optimization techniques.
+* The necessary Python scripts (and packages) to generate all plots. 
+ You won't be allowed to push plots to the repo. We should be able to 
+ generate all plots using your scripts and the logs generated from running your
   code on the ECE server.
 
 
@@ -230,7 +277,7 @@ Follow these guidelines for a successful submission:
 ## Descriptive Answers (TODO)
 Typically there is no single correct answer/plot for the following questions. Rely on your thought process!
 
-### Plot(s) 1: experiment for cache and cache line size
+### Plot(s) 1: Cholesky decomposition performance analysis
 
 TODO: make sure to reference the correct plot below
 
@@ -238,18 +285,13 @@ TODO: make sure to reference the correct plot below
 
 Description: TODO: please provide details for your plot(s) here.
 
-### Plot(s) 2: Tiling 
+
+### Plot(s) 2: N-body simulation performance analysis
 TODO: follow like above example
 
 
-# Licence
-Created by SwiftWare Lab on 9/25.
-CE 4SP4 - High Performance Programming
-Copyright (c) 2025 SwiftWare Lab.
-Distribution of the code is not
-allowed in any form without permission
-from SwiftWare Lab.
-
+### Plot(s) 3: Bonus: blcoked Cholesky decomposition performance analysis
+TODO: follow like above example
 
 
 

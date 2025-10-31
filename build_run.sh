@@ -2,15 +2,19 @@
 
 ##################### SLURM (do not change) v  #####################
 #SBATCH --export=ALL
-#SBATCH --job-name="lab02"
+#SBATCH --job-name="lab03"
 #SBATCH --nodes=1
-#SBATCH --output="lab02.%j.%N.out"
+#SBATCH --output="lab03.%j.%N.out"
 #SBATCH -t 00:45:00
 ##################### SLURM (do not change) ^  #####################
 
 # Above are SLURM directives for job scheduling on a cluster,
 export SLURM_CONF=/etc/slurm/slurm.conf
 
+# Source Intel MKL environment
+source /opt/intel/oneapi/setvars.sh --force
+export MKL_NUM_THREADS=1
+export MKL_DOMAIN_ALL=1
 
 echo "----- Building -----"
 # Do not change below, it is fixed folder everyone
@@ -25,13 +29,13 @@ make -j8
 echo "---- Running ----"
 
 mkdir -p $(pwd)/logs
-$(pwd)/build/lab02-part1 --benchmark_out="$(pwd)/logs/lab02-part1.json" --benchmark_out_format=json
-$(pwd)/build/lab02-part2 --benchmark_out="$(pwd)/logs/lab02-part2.json" --benchmark_out_format=json
+$(pwd)/build/lab03 --benchmark_out="$(pwd)/logs/lab03.json" --benchmark_out_format=json --benchmark_perf_counters="L1-dcache-loads"
+
 
 
 echo "---- Running Tests ----"
 
-$(pwd)/build/test/heat_test
+$(pwd)/build/test/cholesky_test
 
 
 
@@ -42,5 +46,6 @@ source $(pwd)/venv/bin/activate
 pip install -r $(pwd)/script/requirements.txt
 mkdir -p $(pwd)/plots
 
-python3 $(pwd)/script/plot.py $(pwd)/logs/lab02-part1.json
-python3 $(pwd)/script/plot.py $(pwd)/logs/lab02-part2.json
+python3 $(pwd)/script/plot.py $(pwd)/logs/lab03.json
+# TODO add more plotting commands
+

@@ -14,7 +14,7 @@ set(PROFILING_WITH_PAPI OFF CACHE BOOL "PAPI is needed")
 set(PROFILING_WITH_LIKWID OFF CACHE BOOL "LIKWID is needed")
 
 
-project(lab02 C CXX)
+project(lab03 C CXX)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # set the c++ standard to c++11
@@ -33,7 +33,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(PROFILING_ENABLED "Enables Modules for Profiling, needs LIBFPM4" OFF)
 #option(OPENMP "Enables OpenMP" ON)
 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mavx")
 include(FetchContent)
 
@@ -56,40 +56,29 @@ FetchContent_MakeAvailable(googlebenchmark)
 set(BENCHMARK_ENABLE_TESTS ON)
 set(BENCHMARK_ENABLE_GTEST_TESTS ON)
 
+# Find Intel MKL
+option(USE_MKL "Use Intel MKL for reference implementations" OFF)
+if(USE_MKL)
+    find_package(MKL CONFIG REQUIRED)
+    message(STATUS "MKL found: ${MKL_ROOT}")
+endif()
 
 include_directories(
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-add_executable(lab02-part1
-        src/cache_size.cpp
-        part1_bench.cpp
+add_executable(lab03
+        src/cholesky.cpp
+        src/n_body.cpp
+
+        main_bench.cpp
 )
-target_link_libraries(lab02-part1
+target_link_libraries(lab03
         benchmark::benchmark
 )
-
-
-
-add_executable(lab02-part2
-        src/utils.cpp
-        src/pngwriter.c
-        src/setup.cpp
-        src/stencil.cpp
-        part2_bench.cpp
-)
-target_link_libraries(lab02-part2
-        benchmark::benchmark
-)
-
-
-if(HAVE_PNG)
-    add_definitions(-DHAVE_PNG=1)
-    find_package(PNG REQUIRED)
-
-    target_link_libraries(lab02-part2
-    PNG::PNG)
+if(USE_MKL)
+    target_link_libraries(lab03 MKL::MKL)
+    target_compile_definitions(lab03 PRIVATE USE_MKL)
 endif()
-
-
 add_subdirectory(test)
+

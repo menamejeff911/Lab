@@ -2,28 +2,32 @@
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
 
-add_executable(heat_test
-        ../test/heat_test.cpp
-        ${CMAKE_SOURCE_DIR}/src/setup.cpp
-        ${CMAKE_SOURCE_DIR}/src/stencil.cpp
-        ${CMAKE_SOURCE_DIR}/src/pngwriter.c
-        ${CMAKE_SOURCE_DIR}/src/utils.cpp
+add_executable(cholesky_test
+        ../test/cholesky_test.cpp
+        ${CMAKE_SOURCE_DIR}/src/cholesky.cpp
 )
 
-target_link_libraries(heat_test
+target_link_libraries(cholesky_test
         GTest::gmock_main
 )
 
-target_include_directories(heat_test
+target_include_directories(cholesky_test
         PRIVATE ${CMAKE_SOURCE_DIR}/include
 )
 
-if(HAVE_PNG)
-    add_definitions(-DHAVE_PNG=1)
-    find_package(PNG REQUIRED)
-    target_link_libraries(heat_test
-            PNG::PNG)
-endif()
+add_executable(nbody_test
+        ../test/nbody_test.cpp
+        ${CMAKE_SOURCE_DIR}/src/n_body.cpp
+)
+
+target_link_libraries(nbody_test
+        GTest::gmock_main
+)
+
+target_include_directories(nbody_test
+        PRIVATE ${CMAKE_SOURCE_DIR}/include
+)
+
 
 include(GoogleTest)
-gtest_discover_tests(heat_test)
+gtest_discover_tests(cholesky_test)
